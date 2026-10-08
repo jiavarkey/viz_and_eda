@@ -1,0 +1,18 @@
+---
+title: "EDA"
+author: "Jia Varkey"
+date: "2026-10-08"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(patchwork) #Stitch panels together, make plots look how you want it to 
+library(p8105.datasets)
+
+data("weather_df")
+```
+
+

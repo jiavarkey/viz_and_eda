@@ -9,165 +9,180 @@ editor_options:
 
 ```{r}
 library(tidyverse)
-library(ggridges)
+library(patchwork) #Stitch panels together, make plots look how you want it to 
 library(p8105.datasets)
 
 data("weather_df")
 ```
 
-```{r}
-weather_df
-```
-
-Make a scatterplot
-
-```{r}
-ggplot(weather_df, aes(x = tmin, y = tmax)) + 
-  geom_point()
-
-```
-
-Dataframe first
-
-```{r}
-ggp_temp_scatterplot = 
-weather_df |>
-  ggplot(aes(x = tmin, y = tmax)) +
-  geom_point()
-
-ggp_temp_scatterplot
-```
+Scatterplot
 
 ```{r}
 weather_df |>
-  ggplot(aes(x = tmin, y = tmax, color = name)) + 
-  geom_point(alpa = .25) +
-  geom_smooth(se = FALSE)
-
-# where you define your aesthetic matters, up to you
-weather_df |>
-  ggplot(aes(x = tmin, y = tmax)) + 
-  geom_point(aes(color = name), alpa = .25) +
-  geom_smooth(se = FALSE)
-
-weather_df |>
-  ggplot(aes(x = tmin, y = tmax, color = name)) + 
-  geom_smooth(se = FALSE)
+  ggplot(aes(x= tmax, y = tmin, color = name)) +
+  geom_point() +
+  labs(
+    title = "Temperature (Max vs Min)",
+    x = "Max Temperature (C)",
+    y = "Min Temperature (C)",
+    color = "Location",
+    caption = "data from NOAA for three weather stations"
+  )
 ```
 
-Faceting
+Other scales
 
 ```{r}
 weather_df |>
-  ggplot(aes(x = tmin, y= tmax, color = name)) +
-  geom_point(alpha = .5) +
-  facet_grid(. ~ name) # or (name ~ .)
+  ggplot(aes(x= tmax, y = tmin, color = name)) +
+  geom_point() +
+  labs(
+    title = "Temperature (Max vs Min)",
+    x = "Max Temperature (C)",
+    y = "Min Temperature (C)",
+    color = "Location",
+    caption = "data from NOAA for three weather stations"
+  ) +
+  scale_x_continuous(
+    breaks = c(-10, 0, 15), 
+    labels = c("-10 C", "0", "Fifteen")
+  ) +
+  scale_y_continuous(
+    trans = "sqrt",
+    position = "right"
+  )
 ```
 
+Color
 
 ```{r}
 weather_df |>
-  ggplot(aes(x = tmin, y= tmax, color = name)) +
-  geom_point(alpha = .5) +
-  facet_grid(col = vars(name)) 
+  ggplot(aes(x = tmax, y = tmin, color = name)) +
+  geom_point() +
+  scale_color_hue(h = c(100, 300))
 ```
 
+Viridis color palette works for any color blindness
+
+```{r}
+weather_df |>
+  ggplot(aes(x = tmax, y = tmin, color = name)) +
+  geom_point() +
+  viridis::scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE
+  )
+```
+
+## Themes 
+
+```{r}
+weather_df |>
+  ggplot(aes(x = tmax, y = tmin, color = name)) +
+  geom_point() +
+  viridis::scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE
+  ) +
+  theme_bw() + #white background
+  theme_minimal() + 
+  theme_classic() + # no grid lines
+  theme(legend.position = "bottom") # Order of operation matters 
+
+```
+
+Update tmax vs date plot
 
 ```{r}
 weather_df |>
   ggplot(aes(x = date, y = tmax, color = name)) +
-  geom_point(aes(siz = prcp), alpha = .5) +
+  geom_point() +
   geom_smooth(se = FALSE) +
-  facet_grid(. ~ name)
+  labs(
+    title = "Season trends in Max Temp",
+    x = "Date",
+    y = "Max Temperature (C)",
+    color = "Location",
+    caption = "Max daily temp in three weather stations in 2021 and 2020" 
+  ) +
+  viridis::scale_color_viridis(
+  discrete = TRUE
+  ) +
+  theme_minimal() + 
+  theme(legend.position = "bottom")
+```
+
+Weird but useful plot feature
+
+```{r}
+central_park_df = 
+  weather_df |>
+  filter(name == "CentralPark_NY")
+
+molokai_df = 
+  weather_df |>
+  filter(name == "Molokai_HI")
+
+ggplot(molokai_df, aes(x = date, y = tmax, color = name)) +
+  geom_point() +
+  geom_line(data = central_park_df)
+
+
+```
+
+Multiple panels with different plot types
+
+```{r}
+ggp_tmax_tmin =
+  weather_df |>
+  ggplot(aes(x = tmin, y = tmax, color = name)) +
+  geom_point() +
+  theme(legend.position = "none")
+
+ggp_pcrp_density =
+  weather_df |>
+  filter(prcp > 0) |>
+  ggplot(aes(x = prcp, fill = name)) +
+  geom_density(alpha = .5) +
+  theme(legend.position = "none")
+
+ggp_seasonal = 
+  weather_df |>
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point() +
+  theme(legend.position = "bottom")
+
+#Patchwork
+(ggp_tmax_tmin + ggp_pcrp_density)
+(ggp_tmax_tmin + ggp_pcrp_density) / ggp_seasonal
+```
+
+
+## Data manipulation
+
+Start with factors (putting stuff in the order you want)
+
+boxplots
+
+```{r}
+weather_df |>
+  mutate(name = fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |>
+  ggplot(aes(x = name, y = tmax)) +
+  geom_boxplot()
 
 ```
 
 
-Exercise
-```{r}
-# Do not change dataframe within ggplot
-
-weather_df |>
-  filter(name == "CentralPark_NY") |>
-  mutate(
-    tmax = tmax * (9/5) + 32,
-    tmin = tmin * (9/5) +32
-  ) |>
-  ggplot(aes(x = tmin, y = tmax)) +
-  geom_point()
-```
-
-
 ```{r}
 weather_df |>
-  ggplot(aes(x = tmin, y = tmax)) +
-  geom_hex()
-```
-
-
-## Univariate plots 
-
-Histogram
-```{r}
-weather_df |>
-  ggplot(aes(x = tmax, fill = name)) +
-  geom_histogram(position = "dodge") # or facet_grid(. ~ name)
-
-```
-
-Density plots
-
-```{r}
-weather_df |>
-  ggplot(aes(x = tmax, fill = name)) +
-  geom_density(alpha = .3)
-```
-
-Boxplots
-
-```{r}
-weather_df |>
+  mutate(name = fct_reorder(name, tmax)) |>
   ggplot(aes(x = name, y = tmax)) +
   geom_boxplot()
 ```
 
 
-Violin Plots
 
 ```{r}
-weather_df |>
-  ggplot(aes(x = name, y = tmax)) +
-  geom_violin()
-```
 
-
-Ridge Plots
-
-```{r}
-weather_df |>
-  ggplot(aes(x = tmax, y = name)) +
-  geom_density_ridges()
-```
-
-## Save plots
-
-```{r}
-ggp_weather =
-  weather_df |>
-  ggplot(aes(x = date, y = tmax, color = name)) +
-  geom_point(aes(size = prcp), alpha = .5) +
-  facet_grid(. ~ name)
-
-ggp_weather
-
-
-ggsave("images/ggp_weather.pdf", ggp_weather) # images subdirectory
-```
-
-
-```{r fig.width = 12, fig.height = 12}
-weather_df |>
-  ggplot(aes(x = tmin, y = tmax)) +
-  geom_point()
 ```
 
